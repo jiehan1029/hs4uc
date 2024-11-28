@@ -4,8 +4,8 @@ parse csv and save to db
 
 import logging
 import pandas as pd
-from models import CountBySchool
-from database import session_factory
+from app.models import CountBySchool
+from app.database import session_factory
 
 logger = logging.getLogger(__name__)
 

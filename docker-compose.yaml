@@ -1,5 +1,19 @@
 version: '2'
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      ["poetry", "run", "uvicorn", "--host", "0.0.0.0", "--port", "8000", "app.main:app", "--reload"]
+    environment:
+      - POSTGRES_USER=jie
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=admission
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=db
+    ports:
+      - 8000:8000
   db:
     image: "postgres:latest"
     restart: always
