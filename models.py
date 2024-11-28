@@ -20,3 +20,5 @@ class CountBySchool(Base):
     race: Mapped[str] = mapped_column(String(50))
     count_type: Mapped[str] = mapped_column(String(30))
     count: Mapped[int] = mapped_column(Integer)
+    year: Mapped[str] = mapped_column(String(10))
+    campus: Mapped[str] = mapped_column(String(30))
