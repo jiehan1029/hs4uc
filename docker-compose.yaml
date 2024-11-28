@@ -1,0 +1,15 @@
+version: '2'
+services:
+  db:
+    image: "postgres:latest"
+    restart: always
+    environment:
+      - POSTGRES_USER=jie
+      - POSTGRES_PASSWORD=1234
+      - POSTGRES_DB=admission
+    ports:
+      - 5433:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data/admission
+volumes:
+  pgdata:
