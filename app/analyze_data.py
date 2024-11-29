@@ -18,7 +18,7 @@ For each school,
 import logging
 from collections import defaultdict
 from sqlalchemy import func
-from app.models import CountBySchool
+from app.models import CountBySchool, HighSchool, HSPopulation
 from app.database import session_factory
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,9 @@ def by_campus_rate() -> dict:
         return results
 
 
-def by_school_rate(select_campus: str = "individual") -> dict:
+def by_school_rate(
+    select_campus: str = "individual", select_year: str | int = "all"
+) -> dict:
     """
     :param select_campus, str, can be "all", "individual", or specific campus name
     """
@@ -95,6 +97,15 @@ def by_school_rate(select_campus: str = "individual") -> dict:
         all_years = [_.year for _ in all_years_queryset]
         print(f"Found distinct years: {all_years}")
 
+        loop_years = all_years
+        if select_year != "all":
+            if str(select_year) in all_years:
+                loop_years = [str(select_year)]
+
+        sort_by_year = str(max([int(_) for _ in loop_years]))
+
+        print(f"Loop data for years: {loop_years}")
+
         all_campuses_queryset = session.query(CountBySchool.campus).distinct().all()
         all_campuses = [_.campus for _ in all_campuses_queryset]
         print(f"Found distinct campuses: {all_campuses}")
@@ -105,9 +116,42 @@ def by_school_rate(select_campus: str = "individual") -> dict:
         for school in all_schools:
             all_school_count += 1
             school_res = {}
-            for year in all_years:
-                indiv_campus_dict = defaultdict(dict)
+            for year in loop_years:
 
+                ######### Get student demographics data ##################
+                # get the high school 12th grade enrollment population
+                hs_enr_data = (
+                    session.query(HSPopulation.race, HSPopulation.count)
+                    .join(HighSchool, HighSchool.id == HSPopulation.school_id)
+                    .filter(
+                        HighSchool.name == school,
+                        HSPopulation.count_type == "hs_enr",
+                        HSPopulation.year == year,
+                    )
+                    .all()
+                )
+                all_enr_count = None
+                asian_enr_count = None
+                if hs_enr_data:
+                    all_enr_count = [_.count for _ in hs_enr_data if _.race == "All"]
+                    all_enr_count = all_enr_count[0] if all_enr_count else None
+                    asian_enr_count = [
+                        _.count for _ in hs_enr_data if _.race == "Asian"
+                    ]
+                    asian_enr_count = asian_enr_count[0] if asian_enr_count else None
+
+                student_demo = {
+                    "all_student_count": all_enr_count,
+                    "asian_student_count": asian_enr_count,
+                    "asian_student_percentage": (
+                        asian_enr_count / all_enr_count
+                        if (asian_enr_count and all_enr_count)
+                        else 0
+                    ),
+                }
+
+                ########## Get admission/application rate ####################
+                indiv_campus_dict = defaultdict(lambda: defaultdict(dict))
                 select_clause = [CountBySchool.count_type]
                 group_by_clause = [CountBySchool.count_type]
                 filter_clause = [
@@ -137,14 +181,27 @@ def by_school_rate(select_campus: str = "individual") -> dict:
                 if select_campus == "individual":
                     for row in count_data:
                         if row[0] == "App":
-                            indiv_campus_dict[row[1]]["all_app"] = row[2]
+                            indiv_campus_dict[row[1]]["admission/application"][
+                                "all_app"
+                            ] = row[2]
                         if row[0] == "Adm":
-                            indiv_campus_dict[row[1]]["all_adm"] = row[2]
+                            indiv_campus_dict[row[1]]["admission/application"][
+                                "all_adm"
+                            ] = row[2]
                     for k in indiv_campus_dict.keys():
-                        indiv_campus_dict[k]["all_percentage"] = (
-                            indiv_campus_dict[k].get("all_adm", 0)
-                            / indiv_campus_dict[k].get("all_app", 0)
-                            if indiv_campus_dict[k].get("all_app", 0) > 0
+                        indiv_campus_dict[k]["admission/application"][
+                            "all_percentage"
+                        ] = (
+                            indiv_campus_dict[k]["admission/application"].get(
+                                "all_adm", 0
+                            )
+                            / indiv_campus_dict[k]["admission/application"].get(
+                                "all_app", 0
+                            )
+                            if indiv_campus_dict[k]["admission/application"].get(
+                                "all_app", 0
+                            )
+                            > 0
                             else None
                         )
                 else:
@@ -165,14 +222,27 @@ def by_school_rate(select_campus: str = "individual") -> dict:
                 if select_campus == "individual":
                     for row in asian_count_data:
                         if row[0] == "App":
-                            indiv_campus_dict[row[1]]["asian_app"] = row[2]
+                            indiv_campus_dict[row[1]]["admission/application"][
+                                "asian_app"
+                            ] = row[2]
                         if row[0] == "Adm":
-                            indiv_campus_dict[row[1]]["asian_adm"] = row[2]
+                            indiv_campus_dict[row[1]]["admission/application"][
+                                "asian_adm"
+                            ] = row[2]
                     for k in indiv_campus_dict.keys():
-                        indiv_campus_dict[k]["asian_percentage"] = (
-                            indiv_campus_dict[k].get("asian_adm", 0)
-                            / indiv_campus_dict[k].get("asian_app", 0)
-                            if indiv_campus_dict[k].get("asian_app", 0) > 0
+                        indiv_campus_dict[k]["admission/application"][
+                            "asian_percentage"
+                        ] = (
+                            indiv_campus_dict[k]["admission/application"].get(
+                                "asian_adm", 0
+                            )
+                            / indiv_campus_dict[k]["admission/application"].get(
+                                "asian_app", 0
+                            )
+                            if indiv_campus_dict[k]["admission/application"].get(
+                                "asian_app", 0
+                            )
+                            > 0
                             else None
                         )
                 else:
@@ -182,10 +252,80 @@ def by_school_rate(select_campus: str = "individual") -> dict:
                     asian_adm_count = [_[1] for _ in asian_count_data if _[0] == "Adm"][
                         0
                     ]
+
+                ########## Get application/total student percentage ####################
+                app_student_data = {}
+                if select_campus == "individual":
+                    for k, v in indiv_campus_dict.items():
+                        v["application/student"]["all_app_all_student"] = (
+                            v["admission/application"].get("all_app", 0) / all_enr_count
+                            if all_enr_count
+                            else None
+                        )
+                        v["application/student"]["asian_app_asian_student"] = (
+                            v["admission/application"].get("asian_app", 0)
+                            / asian_enr_count
+                            if asian_enr_count
+                            else None
+                        )
+                        v["application/student"]["asian_app_all_student"] = (
+                            v["admission/application"].get("asian_app", 0)
+                            / all_enr_count
+                            if all_enr_count
+                            else None
+                        )
+                        v["application/student"]["all_adm_all_student"] = (
+                            v["admission/application"].get("all_adm", 0) / all_enr_count
+                            if all_enr_count
+                            else None
+                        )
+                        v["application/student"]["asian_adm_asian_student"] = (
+                            v["admission/application"].get("asian_adm", 0)
+                            / asian_enr_count
+                            if asian_enr_count
+                            else None
+                        )
+                        v["application/student"]["asian_adm_all_student"] = (
+                            v["admission/application"].get("asian_adm", 0)
+                            / all_enr_count
+                            if all_enr_count
+                            else None
+                        )
+                else:
+                    app_student_data["all_app_all_student"] = (
+                        app_count / all_enr_count if all_enr_count else None
+                    )
+                    app_student_data["asian_app_asian_student"] = (
+                        asian_app_count / asian_enr_count
+                        if (asian_app_count and asian_enr_count)
+                        else 0
+                    )
+                    app_student_data["asian_app_all_student"] = (
+                        asian_app_count / all_enr_count
+                        if (asian_app_count and all_enr_count)
+                        else 0
+                    )
+                    app_student_data["all_adm_all_student"] = (
+                        adm_count / all_enr_count if all_enr_count else None
+                    )
+                    app_student_data["asian_adm_asian_student"] = (
+                        asian_adm_count / asian_enr_count
+                        if (asian_adm_count and asian_enr_count)
+                        else 0
+                    )
+                    app_student_data["asian_adm_all_student"] = (
+                        asian_adm_count / all_enr_count
+                        if (asian_adm_count and all_enr_count)
+                        else 0
+                    )
+
                 if select_campus == "individual":
                     no_data = True
                     for k, v in indiv_campus_dict.items():
-                        if v["asian_percentage"] or v["all_percentage"]:
+                        if (
+                            v["admission/application"]["asian_percentage"]
+                            or v["admission/application"]["all_percentage"]
+                        ):
                             no_data = False
                             break
                     if no_data:
@@ -193,7 +333,10 @@ def by_school_rate(select_campus: str = "individual") -> dict:
                             f"Skip school for year because admission rate is 0 or no data: {school}/{year}"
                         )
                         continue
-                    school_res[year] = dict(indiv_campus_dict)
+                    school_res[year] = {
+                        "student_demo": student_demo,
+                        **dict(indiv_campus_dict),
+                    }
                 else:
                     if not adm_count and not asian_adm_count:
                         print(
@@ -201,20 +344,28 @@ def by_school_rate(select_campus: str = "individual") -> dict:
                         )
                         continue
                     school_res[year] = {
-                        "all_app": app_count,
-                        "all_adm": adm_count,
-                        "all_percentage": adm_count / app_count if app_count else None,
-                        "asian_app": asian_app_count,
-                        "asian_adm": asian_adm_count,
-                        "asian_percentage": (
-                            asian_adm_count / asian_app_count
-                            if asian_app_count
-                            else None
-                        ),
+                        "student_demo": student_demo,
+                        "application/student": app_student_data,
+                        "admission/application": {
+                            "all_app": app_count,
+                            "all_adm": adm_count,
+                            "all_percentage": (
+                                adm_count / app_count if app_count else None
+                            ),
+                            "asian_app": asian_app_count,
+                            "asian_adm": asian_adm_count,
+                            "asian_percentage": (
+                                asian_adm_count / asian_app_count
+                                if asian_app_count
+                                else None
+                            ),
+                        },
                     }
 
             if school_res:
-                results[school] = school_res
+                # sort by most recent year
+                sorted_school_res = dict(sorted(school_res.items(), reverse=True))
+                results[school] = sorted_school_res
             else:
                 skipped_school_count += 1
                 print(f"Skip school because admission rate is 0 or no data: {school}")
@@ -223,14 +374,17 @@ def by_school_rate(select_campus: str = "individual") -> dict:
             f"Total {all_school_count} schools found and skipped {skipped_school_count}."
         )
 
-        # sort by highest all_percentage in 2023
+        # sort by highest all_adm_all_student in 2023
         if select_campus != "individual":
             results = dict(
                 sorted(
                     results.items(),
                     key=lambda x: (
-                        x[1]["2023"]["all_percentage"]
-                        if x[1].get("2023", {}).get("all_percentage")
+                        x[1][sort_by_year]["application/student"]["all_adm_all_student"]
+                        if x[1]
+                        .get(sort_by_year, {})
+                        .get("application/student", {})
+                        .get("all_adm_all_student")
                         else 0
                     ),
                     reverse=True,

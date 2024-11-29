@@ -10,10 +10,12 @@ def health_check():
 
 
 @app.get("/analyze")
-def analyze_data(by: str = "school", select_campus: str = "all"):
+def analyze_data(
+    by: str = "school", select_campus: str = "all", select_year: str = "all"
+):
     if by == "campus":
         return by_campus_rate()
     if by == "school":
-        return by_school_rate(select_campus=select_campus)
+        return by_school_rate(select_campus=select_campus, select_year=select_year)
 
     return "use ?by=campus or ?by=school"
