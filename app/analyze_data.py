@@ -159,12 +159,18 @@ def by_school_rate(
                     CountBySchool.school == school,
                     CountBySchool.race == "All",
                 ]
+                filter_clause_2 = [
+                    CountBySchool.year == year,
+                    CountBySchool.school == school,
+                    CountBySchool.race == "Asian",
+                ]
                 if select_campus == "individual":
                     select_clause.append(CountBySchool.campus)
                     group_by_clause.append(CountBySchool.campus)
                 elif select_campus != "all":
                     # specified a campus name
                     filter_clause.append(CountBySchool.campus == select_campus)
+                    filter_clause_2.append(CountBySchool.campus == select_campus)
 
                 select_clause.append(func.sum(CountBySchool.count))
                 count_data = (
@@ -207,15 +213,9 @@ def by_school_rate(
                 else:
                     app_count = [_[1] for _ in count_data if _[0] == "App"][0]
                     adm_count = [_[1] for _ in count_data if _[0] == "Adm"][0]
+                    enr_count = [_[1] for _ in count_data if _[0] == "Enr"]
+                    enr_count = enr_count[0] if enr_count else None
 
-                filter_clause_2 = [
-                    CountBySchool.year == year,
-                    CountBySchool.school == school,
-                    CountBySchool.race == "Asian",
-                ]
-                if select_campus not in ["individual", "all"]:
-                    # specified a campus name
-                    filter_clause_2.append(CountBySchool.campus == select_campus)
                 asian_count_data = (
                     session.query(*select_clause)
                     .filter(*filter_clause_2)
@@ -255,6 +255,8 @@ def by_school_rate(
                     asian_adm_count = [_[1] for _ in asian_count_data if _[0] == "Adm"][
                         0
                     ]
+                    asian_enr_count = [_[1] for _ in asian_count_data if _[0] == "Enr"]
+                    asian_enr_count = asian_enr_count[0] if asian_enr_count else None
 
                 ########## Get application/total student percentage ####################
                 app_student_data = {}
@@ -322,6 +324,46 @@ def by_school_rate(
                         else 0
                     )
 
+                ########## Get campus enrollment/admission percentage ####################
+                # the lower the enrollment/admission percentage, the larger chance that the student
+                # land on a better university.
+                enr_adm_data = {}
+                if select_campus == "individual":
+                    v["enrollment/admission"]["all_enr_count"] = enr_count
+                    v["enrollment/admission"]["asian_enr_count"] = asian_enr_count
+                    v["enrollment/admission"]["all_enr_all_adm"] = (
+                        enr_count / v["admission/application"].get("all_adm")
+                        if v["admission/application"].get("all_adm") and enr_count
+                        else None
+                    )
+                    v["enrollment/admission"]["asian_enr_asian_adm"] = (
+                        asian_enr_count / v["admission/application"].get("asian_adm")
+                        if v["admission/application"].get("asian_adm")
+                        and asian_enr_count
+                        else None
+                    )
+                    v["enrollment/admission"]["asian_enr_all_adm"] = (
+                        asian_enr_count / v["admission/application"].get("all_adm")
+                        if v["admission/application"].get("all_adm") and asian_enr_count
+                        else None
+                    )
+                else:
+                    enr_adm_data["all_enr_count"] = enr_count
+                    enr_adm_data["asian_enr_count"] = asian_enr_count
+                    enr_adm_data["all_enr_all_adm"] = (
+                        enr_count / adm_count if (adm_count and enr_count) else None
+                    )
+                    enr_adm_data["asian_enr_asian_adm"] = (
+                        asian_enr_count / asian_adm_count
+                        if (asian_adm_count and asian_enr_count)
+                        else None
+                    )
+                    enr_adm_data["asian_enr_all_adm"] = (
+                        asian_enr_count / adm_count
+                        if (adm_count and asian_enr_count)
+                        else None
+                    )
+
                 if select_campus == "individual":
                     no_data = True
                     for k, v in indiv_campus_dict.items():
@@ -363,6 +405,7 @@ def by_school_rate(
                                 else None
                             ),
                         },
+                        "enrollment/admission": enr_adm_data,
                     }
 
             if school_res:
@@ -377,18 +420,34 @@ def by_school_rate(
             f"Total {all_school_count} schools found and skipped {skipped_school_count}."
         )
 
-        # sort by highest all_adm_all_student in 2023
+        # sort by highest all_adm_all_student
+        # secondary sort by lowest all_enr_all_adm
         if select_campus != "individual":
             results = dict(
                 sorted(
                     results.items(),
                     key=lambda x: (
-                        x[1][sort_by_year]["application/student"]["all_adm_all_student"]
-                        if x[1]
-                        .get(sort_by_year, {})
-                        .get("application/student", {})
-                        .get("all_adm_all_student")
-                        else 0
+                        (
+                            x[1][sort_by_year]["application/student"][
+                                "all_adm_all_student"
+                            ]
+                            if x[1]
+                            .get(sort_by_year, {})
+                            .get("application/student", {})
+                            .get("all_adm_all_student")
+                            else 0
+                        ),
+                        (
+                            -1
+                            * x[1][sort_by_year]["enrollment/admission"][
+                                "all_enr_all_adm"
+                            ]
+                            if x[1]
+                            .get(sort_by_year, {})
+                            .get("enrollment/admission", {})
+                            .get("all_enr_all_adm")
+                            else -10
+                        ),
                     ),
                     reverse=True,
                 )
