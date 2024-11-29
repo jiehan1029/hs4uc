@@ -1,11 +1,14 @@
 version: '2'
 services:
   app:
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ./app:/code/app
     command:
-      ["poetry", "run", "uvicorn", "--host", "0.0.0.0", "--port", "8000", "app.main:app", "--reload"]
+      ["poetry", "run", "uvicorn", "--host", "0.0.0.0", "--port", "8000", "app.main:app", "--reload", "--reload-dir", "/code/app"]
     environment:
       - POSTGRES_USER=jie
       - POSTGRES_PASSWORD=1234
