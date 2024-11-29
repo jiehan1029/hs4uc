@@ -83,15 +83,30 @@ def by_campus_rate() -> dict:
 
 
 def by_school_rate(
-    select_campus: str = "individual", select_year: str | int = "all"
+    select_campus: str = "individual",
+    select_year: str | int = "all",
+    select_school_type: str = "all",
 ) -> dict:
     """
     :param select_campus, str, can be "all", "individual", or specific campus name
+    :param select_school_type, str, can be "all", "public" or "private"
     """
     with session_factory() as session:
-        all_schools_queryset = session.query(CountBySchool.school).distinct().all()
+        if select_school_type not in ["public", "private"]:
+            all_schools_queryset = session.query(CountBySchool.school).distinct().all()
+        else:
+            all_schools_queryset = (
+                session.query(CountBySchool.school)
+                .join(HighSchool, CountBySchool.school_id == HighSchool.id)
+                .filter(HighSchool.category == select_school_type)
+                .distinct()
+                .all()
+            )
+
         all_schools = [_.school for _ in all_schools_queryset]
-        print(f"Found distinct schools: {all_schools}")
+        print(
+            f"Found distinct schools ({len(all_schools)}) for type {select_school_type}: {all_schools}"
+        )
 
         all_years_queryset = session.query(CountBySchool.year).distinct().all()
         all_years = [_.year for _ in all_years_queryset]
@@ -117,6 +132,13 @@ def by_school_rate(
             all_school_count += 1
             school_res = {}
             for year in loop_years:
+                ######### Get school info ##################
+                school_obj = (
+                    session.query(HighSchool.category, HighSchool.name, HighSchool.city)
+                    .filter(HighSchool.name == school)
+                    .first()
+                )
+                school_info = school_obj._asdict()
 
                 ######### Get student demographics data ##################
                 # get the high school 12th grade enrollment population
@@ -411,7 +433,7 @@ def by_school_rate(
             if school_res:
                 # sort by most recent year
                 sorted_school_res = dict(sorted(school_res.items(), reverse=True))
-                results[school] = sorted_school_res
+                results[school] = {"school_info": school_info, **sorted_school_res}
             else:
                 skipped_school_count += 1
                 print(f"Skip school because admission rate is 0 or no data: {school}")
@@ -420,23 +442,32 @@ def by_school_rate(
             f"Total {all_school_count} schools found and skipped {skipped_school_count}."
         )
 
-        # sort by highest all_adm_all_student
+        # sort by highest all_adm_all_student or all_percentage(missing student # for private schools)
         # secondary sort by lowest all_enr_all_adm
         if select_campus != "individual":
+
+            def get_first_sort_key(input):
+                first_choice = (
+                    input.get(sort_by_year, {})
+                    .get("application/student", {})
+                    .get("all_adm_all_student")
+                )
+                if first_choice is not None:
+                    return first_choice
+                sec_choice = (
+                    input.get(sort_by_year, {})
+                    .get("admission/application", {})
+                    .get("all_percentage")
+                )
+                if sec_choice is not None:
+                    return sec_choice
+                return 0
+
             results = dict(
                 sorted(
                     results.items(),
                     key=lambda x: (
-                        (
-                            x[1][sort_by_year]["application/student"][
-                                "all_adm_all_student"
-                            ]
-                            if x[1]
-                            .get(sort_by_year, {})
-                            .get("application/student", {})
-                            .get("all_adm_all_student")
-                            else 0
-                        ),
+                        get_first_sort_key(x[1]),
                         (
                             -1
                             * x[1][sort_by_year]["enrollment/admission"][
