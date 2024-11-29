@@ -213,6 +213,9 @@ def by_school_rate(
                     CountBySchool.school == school,
                     CountBySchool.race == "Asian",
                 ]
+                if select_campus not in ["individual", "all"]:
+                    # specified a campus name
+                    filter_clause_2.append(CountBySchool.campus == select_campus)
                 asian_count_data = (
                     session.query(*select_clause)
                     .filter(*filter_clause_2)

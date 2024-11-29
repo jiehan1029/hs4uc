@@ -60,6 +60,9 @@ class HSPopulation(Base):
         String(30), default="hs_enr"
     )  # can be highschool enrollment (hs_enr) or graduate (hs_grad)
     race: Mapped[str] = mapped_column(String(50))
+    sub_race: Mapped[str] = mapped_column(
+        String(50), nullable=True
+    )  # for example, Filipino (also Asian)
 
     school_id: Mapped[int] = mapped_column(ForeignKey("high_schools.id"), nullable=True)
     school: Mapped["HighSchool"] = relationship(back_populates="populations")

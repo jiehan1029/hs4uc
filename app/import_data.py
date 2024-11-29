@@ -11,9 +11,10 @@ from app.database import session_factory
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_FILE_PATH = "~/Desktop/admissions.xlsx"
+DEFAULT_FILE_PATH = "~/Desktop/admissions_2.xlsx"
 YEARS = ["2023", "2022", "2021"]
-CAMPUSES = ["ucb", "ucla", "uci", "ucd"]
+# CAMPUSES = ["ucb", "ucla", "uci", "ucd"]
+CAMPUSES = ["ucsd", "ucsb"]
 
 DEFAULT_FILE_PATH_GRAD_STATS = "~/Desktop/hs_graduates.xlsx"
 GRAD_YEARS = ["2023", "2021"]
@@ -125,7 +126,11 @@ def save_file_to_db(file_path: str = DEFAULT_FILE_PATH) -> dict:
 
 
 def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) -> dict:
-    race_shortname_map = {"ALL": "All", "AS": "Asian"}
+    race_shortname_map = {
+        "ALL": "All",
+        "AS": "Asian",
+        "FI": {"sub": "Filipino", "main": "Asian"},
+    }
     # todo/note: two spreadsheets may use different names for the same school.
     school_name_map = {
         "adrian wilcox high": "ADRIAN C WILCOX HIGH SCHOOL",
@@ -164,7 +169,7 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                     continue
 
                 # only check all and asian stats
-                if rec["studentgroup"] not in ["ALL", "AS"]:
+                if rec["studentgroup"] not in race_shortname_map:
                     continue
                 try:
                     school_name = rec["schoolname"].strip().lower()
@@ -183,6 +188,10 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                         continue
 
                     race = race_shortname_map[rec["studentgroup"]]
+                    sub_race = None
+                    if isinstance(race, dict):
+                        race = race_shortname_map[rec["studentgroup"]].get("main")
+                        sub_race = race_shortname_map[rec["studentgroup"]].get("sub")
                     count = rec["currdenom"]
                     # check if already imported the population object
                     found_population = (
@@ -190,6 +199,7 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                         .filter(
                             HSPopulation.school_id == found_school.id,
                             HSPopulation.race == race,
+                            HSPopulation.sub_race == sub_race,
                             HSPopulation.year == year,
                             HSPopulation.count_type == "hs_enr",
                         )
@@ -206,6 +216,7 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                         new_poulation = HSPopulation(
                             school_id=found_school.id,
                             race=race,
+                            sub_race=sub_race,
                             year=year,
                             count_type="hs_enr",
                             count=count,
@@ -223,6 +234,7 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                             .filter(
                                 HSPopulation.school_id == found_school.id,
                                 HSPopulation.race == race,
+                                HSPopulation.sub_race == sub_race,
                                 HSPopulation.year == last_year,
                                 HSPopulation.count_type == "hs_enr",
                             )
@@ -239,6 +251,7 @@ def save_grad_population_to_db(file_path: str = DEFAULT_FILE_PATH_GRAD_STATS) ->
                             new_last_poulation = HSPopulation(
                                 school_id=found_school.id,
                                 race=race,
+                                sub_race=sub_race,
                                 year=last_year,
                                 count_type="hs_enr",
                                 count=last_year_count,
