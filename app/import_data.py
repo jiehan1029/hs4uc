@@ -11,12 +11,12 @@ from app.database import session_factory
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_FILE_PATH = "~/Desktop/admissions_2.xlsx"
+PRIVATE_ADMISSION_FILE_PATH = "~/Desktop/admission/admissions_private_hs.xlsx"
+DEFAULT_FILE_PATH = "~/Desktop/admission/admissions_v2.xlsx"
 YEARS = ["2023", "2022", "2021"]
-# CAMPUSES = ["ucb", "ucla", "uci", "ucd"]
-CAMPUSES = ["ucsd", "ucsb"]
+CAMPUSES = ["ucb", "ucla", "uci", "ucd", "ucsd", "ucsb"]
 
-DEFAULT_FILE_PATH_GRAD_STATS = "~/Desktop/hs_graduates.xlsx"
+DEFAULT_FILE_PATH_GRAD_STATS = "~/Desktop/admission/hs_graduates.xlsx"
 GRAD_YEARS = ["2023", "2021"]
 
 SHEET_HEADER_TO_TABLE_COLUMNS = {
@@ -42,7 +42,9 @@ def read_file_to_list(
     return records
 
 
-def save_file_to_db(file_path: str = DEFAULT_FILE_PATH) -> dict:
+def save_file_to_db(
+    file_path: str = PRIVATE_ADMISSION_FILE_PATH, school_category: str = "private"
+) -> dict:
     results = {}
     with session_factory() as session:
         for yr in YEARS:
@@ -68,6 +70,7 @@ def save_file_to_db(file_path: str = DEFAULT_FILE_PATH) -> dict:
                         new_school = HighSchool(
                             city=rec.get("City"),
                             name=rec.get("School"),
+                            category=school_category,
                         )
                         session.add(new_school)
                         session.commit()

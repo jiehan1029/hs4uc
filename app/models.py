@@ -20,6 +20,9 @@ class HighSchool(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     city: Mapped[str] = mapped_column(String(50), nullable=True)
     name: Mapped[str] = mapped_column(String(100))
+    category: Mapped[str] = mapped_column(
+        String(20), default="public", server_default="public"
+    )  # "public" or "private"
     gs_score: Mapped[float] = mapped_column(Float, nullable=True)
     gs_url: Mapped[str] = mapped_column(String(250), nullable=True)  # greatschools url
     niche_score: Mapped[float] = mapped_column(Float, nullable=True)
