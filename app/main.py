@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.analyze_data import by_campus_rate
+from app.analyze_data import by_campus_rate, by_school_rate
 
 app = FastAPI()
 
@@ -10,6 +10,10 @@ def health_check():
 
 
 @app.get("/analyze")
-def analyze_data():
-    by_campus_results = by_campus_rate()
-    return by_campus_results
+def analyze_data(by: str = "school", select_campus: str = "all"):
+    if by == "campus":
+        return by_campus_rate()
+    if by == "school":
+        return by_school_rate(select_campus=select_campus)
+
+    return "use ?by=campus or ?by=school"

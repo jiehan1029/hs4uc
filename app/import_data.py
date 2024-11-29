@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_FILE_PATH = "~/Desktop/admissions.xlsx"
 
-YEARS = [2023, 2022, 2021]
+YEARS = ["2023", "2022", "2021"]
 CAMPUSES = ["ucb", "ucla", "uci", "ucd"]
 
 SHEET_HEADER_TO_TABLE_COLUMNS = {
@@ -26,11 +26,12 @@ SHEET_HEADER_TO_TABLE_COLUMNS = {
 
 def read_file_to_list(file_path: str, sheet_name: str | int | None = 0) -> list[dict]:
     raw_df = pd.read_excel(io=file_path, sheet_name=sheet_name, header=0)
+    columns_to_ffill = ["Calculation1", "County/State/ Territory", "School", "City"]
+    raw_df[columns_to_ffill] = raw_df[columns_to_ffill].ffill()
     raw_df.fillna(0, inplace=True)
-    # pd.set_option('display.max_columns', None)
-    # print(f'****** raw_df\n{raw_df}')
+    # pd.set_option("display.max_columns", None)
+    # print(f"****** raw_df\n{raw_df}")
     records = raw_df.to_dict("records")
-    # print(f'***** {records=}')
     return records
 
 
