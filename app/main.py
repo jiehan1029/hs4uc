@@ -28,14 +28,16 @@ def analyze_data(
     select_campus: str = "all",
     select_year: str = "all",
     select_school_type: str = "all",
+    page: int = 1,
+    page_size: int = 10,
 ):
     if by == "campus":
         return by_campus_rate()
-    if by == "school":
-        return by_school_rate(
-            select_campus=select_campus,
-            select_year=select_year,
-            select_school_type=select_school_type,
-        )
 
-    return "use ?by=campus or ?by=school"
+    return by_school_rate(
+        select_campus=select_campus,
+        select_year=select_year,
+        select_school_type=select_school_type,
+        offset=(page - 1) * page_size,
+        limit=page_size,
+    )

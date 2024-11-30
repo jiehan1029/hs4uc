@@ -86,6 +86,8 @@ def by_school_rate(
     select_campus: str = "individual",
     select_year: str | int = "all",
     select_school_type: str = "all",
+    offset: int = 0,
+    limit: int = 10,
 ) -> dict:
     """
     :param select_campus, str, can be "all", "individual", or specific campus name
@@ -484,4 +486,4 @@ def by_school_rate(
                 )
             )
 
-        return results
+        return results[offset:limit]
