@@ -13,3 +13,14 @@ UC Admission stats: https://www.universityofcalifornia.edu/about-us/information-
 
 ### Tech stack
 Python3, FastAPI, PostgresQL, Sqlalchemy, Alembic
+
+
+### Run in localhost
+Assume relevant spreadsheets are ready (see `import_data.py`).
+
+First spin up container with `docker compose build` and `docker compose up`.
+
+Second install dependencies locally (since I saved the spreadsheets in desktop) `poetry install` and then run migration `poetry run alembic upgrade head`. After that, import data by running the methods inside `import_data.py` from poetry env's python shell (`poetry run python`).
+
+Now everything is ready. Check out localhost:8000/analyze.
+
