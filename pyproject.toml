@@ -1,9 +1,10 @@
 [tool.poetry]
-name = "admission"
+name = "hs4uc"
 version = "0.1.0"
 description = ""
 authors = ["Jie Han"]
 readme = "README.md"
+package-mode = false
 
 [tools.setuptools]
 packages = ["src"]

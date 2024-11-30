@@ -43,7 +43,7 @@ def read_file_to_list(
 
 
 def save_file_to_db(
-    file_path: str = PRIVATE_ADMISSION_FILE_PATH, school_category: str = "private"
+    file_path: str = DEFAULT_FILE_PATH, school_category: str = "public"
 ) -> dict:
     results = {}
     with session_factory() as session:

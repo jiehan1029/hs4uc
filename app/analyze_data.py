@@ -16,6 +16,7 @@ For each school,
 """
 
 import logging
+import itertools
 from collections import defaultdict
 from sqlalchemy import func
 from app.models import CountBySchool, HighSchool, HSPopulation
@@ -485,5 +486,7 @@ def by_school_rate(
                     reverse=True,
                 )
             )
-
-        return results[offset:limit]
+        sliced_dict = dict(
+            itertools.islice(results.items(), offset, (offset + limit), 1)
+        )
+        return sliced_dict

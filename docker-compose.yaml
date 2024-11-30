@@ -12,7 +12,7 @@ services:
     environment:
       - POSTGRES_USER=jie
       - POSTGRES_PASSWORD=1234
-      - POSTGRES_DB=admission
+      - POSTGRES_DB=hs4uc
       - POSTGRES_PORT=5432
       - POSTGRES_HOST=db
     ports:
@@ -23,10 +23,10 @@ services:
     environment:
       - POSTGRES_USER=jie
       - POSTGRES_PASSWORD=1234
-      - POSTGRES_DB=admission
+      - POSTGRES_DB=hs4uc
     ports:
       - 5433:5432
     volumes:
-      - pgdata:/var/lib/postgresql/data/admission
+      - hs4uc:/var/lib/postgresql/data
 volumes:
-  pgdata:
+  hs4uc:
